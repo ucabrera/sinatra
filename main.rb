@@ -13,7 +13,7 @@ class JwtAuth
       begin
         options = { algorithm: 'HS256', iss: 'DSSD' }
         bearer = env.fetch('HTTP_AUTHORIZATION', '').slice(7..-1)
-        payload, header = JWT.decode bearer, iss: ENV['JWT_SECRET'], true, options 
+        payload, header = JWT.decode bearer, ENV['JWT_SECRET'], true, options 
         env[:user] = payload['user']
   
         @app.call env
