@@ -13,7 +13,7 @@ class JwtAuth
       begin
         options = { algorithm: 'HS256', iss: 'DSSD' }
         bearer = env.fetch('HTTP_AUTHORIZATION', '').slice(7..-1)
-        payload, header = JWT.decode bearer, 'JWT_SECRET', true, options 
+        payload, header = JWT.decode bearer, iss: ENV['JWT_SECRET'], true, options 
         env[:user] = payload['user']
   
         @app.call env
@@ -150,15 +150,14 @@ class Api < Sinatra::Base
     private
 
     def token username
-      JWT.encode payload(username), 'JWT_SECRET', 'HS256'
+      JWT.encode payload(username), ENV['JWT_SECRET'], 'HS256'
     end
     
     def payload username
       {
         exp: Time.now.to_i + 7500,
         iat: Time.now.to_i,
-        #iss: ENV['JWT_ISSUER'],
-        iss: 'DSSD',
+        iss: ENV['JWT_ISSUER'],
         user: {
           username: username
         }
