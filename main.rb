@@ -11,9 +11,9 @@ class JwtAuth
   
     def call env
       begin
-        options = { algorithm: 'HS256', iss: 'DSSD' }
+        options = { algorithm: 'HS256', iss: ENV['JWT_ISSUER'] }
         bearer = env.fetch('HTTP_AUTHORIZATION', '').slice(7..-1)
-        payload, header = JWT.decode bearer, ENV['JWT_SECRET'], true, options 
+        payload, header = JWT.decode bearer, ENV['JWT_SECRET'], true, options
         env[:user] = payload['user']
   
         @app.call env
@@ -24,7 +24,7 @@ class JwtAuth
       rescue JWT::InvalidIatError
         [403, { 'Content-Type' => 'text/plain' }, ['El token no tiene un tiempo de emisión válido.']]
       rescue JWT::DecodeError
-        [401, { 'Content-Type' => 'text/plain' }, ['Se tiene que enviar un token.']]
+        [401, { 'Content-Type' => 'text/plain' }, ['El token no es válido.']]
       end
     end
   
@@ -60,31 +60,27 @@ class Api < Sinatra::Base
       if start_date < Date.today
         return 'La fecha a buscar debe ser mayor al día de hoy'       
       end
-      hash = {}
-      ids = []
-      caso
+      arr = []
       locaciones = @locations.sample(6)
       case caso
       when 1 #Quiero una sola locación para esa fecha
-        hash [rand(9999)] = @locations.sample
+        arr.push({ fecha: start_date })
+        arr.push({ id: rand(9999), ubicacion: @locations.sample})
       when 2 #Quiero n locaciones, n > 1, para esa fecha
         cantidad = rand(2..5)
+        arr.push({ fecha: start_date })
         for i in 0...cantidad do
-          hash [rand(9999)] = locaciones[i]
+          arr.push({ id: rand(9999), ubicacion: locaciones[i]})
         end
       else #Quiero que no haya locaciones para esa fecha y envié n locaciones, mas cercanas a esa fecha
         cantidad = rand 2..5
         days = rand 2..30
-        for i in 1..cantidad 
-          ids << rand(9999)
-        end
-        ids.sort!
-        hash['fecha'] = start_date.next_day(days)
+        arr.push({ fecha: start_date.next_day(days) })
         for i in 0...cantidad do
-          hash [ids[i].to_s] = locaciones[i]
+          arr.push({ id: rand(9999), ubicacion: locaciones[i]})
         end
       end
-      hash.to_json
+      arr.to_json
     end
       
     post '/reserve' do
@@ -123,8 +119,7 @@ class Api < Sinatra::Base
       super
   
       @logins = {
-        "susana.garcia": 'bpm',
-        test: 'test'
+        "susana.garcia": 'bpm'
       }
     end
 
@@ -155,7 +150,7 @@ class Api < Sinatra::Base
     
     def payload username
       {
-        exp: Time.now.to_i + 7500,
+        exp: Time.now.to_i + 1200,
         iat: Time.now.to_i,
         iss: ENV['JWT_ISSUER'],
         user: {
